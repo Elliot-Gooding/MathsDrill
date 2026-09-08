@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mathdrill</title>
+<style>
+  :root {
+    --bg: #f1f2f4; --surface: #ffffff; --text: #1c1e21; --muted: #666b72;
+    --line: #dee1e5; --line-soft: #e9ebee;
+    --accent: #3b5ba5; --good: #2e7d51; --bad: #a33a3a;
+    --radius: 5px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16181c; --surface: #1e2126; --text: #e4e7ea; --muted: #969ca4;
+      --line: #2c3037; --line-soft: #24272c;
+      --accent: #8fa9e8; --good: #5fbf8a; --bad: #de8c8c;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 400 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 46rem; margin: 0 auto; padding: 2.5rem 1.25rem 5rem; }
+
+  h1 { font-size: 1.25rem; font-weight: 600; letter-spacing: -.01em; margin: 0 0 .4rem; }
+  h2 { font-size: .8125rem; font-weight: 600; color: var(--muted); margin: 2rem 0 .5rem; }
+  p { margin: 0 0 1rem; }
+  .lede { color: var(--muted); font-size: .875rem; max-width: 34rem; margin-bottom: 1.75rem; }
+
+  button {
+    font: inherit; font-size: .875rem; padding: .4rem .85rem;
+    border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--surface); color: var(--text); cursor: pointer;
+  }
+  button:hover { border-color: var(--accent); color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 500; }
+  button.primary:hover { color: #fff; opacity: .9; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  input[type=number], input[type=text] {
+    font: inherit; font-size: .875rem; font-variant-numeric: tabular-nums;
+    padding: .2rem .4rem; width: 4.5rem;
+    border: 1px solid var(--line); border-radius: 4px;
+    background: var(--surface); color: var(--text);
+  }
+  input[type=text] { width: 13rem; }
+  input[type=checkbox] { accent-color: var(--accent); width: 1rem; height: 1rem; margin: 0; }
+
+  .presets { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1.5rem; }
+
+  .round { display: flex; align-items: center; gap: .5rem; font-size: .875rem; color: var(--muted); }
+
+  .group { margin-bottom: 1.25rem; }
+  .drill { padding: .55rem 0; border-bottom: 1px solid var(--line-soft); }
+  .drill:last-child { border-bottom: none; }
+  .head { display: flex; align-items: center; gap: .6rem; cursor: pointer; user-select: none; }
+  .head .name { font-size: .9375rem; }
+  .drill.off .name { color: var(--muted); }
+  .params { display: flex; flex-wrap: wrap; gap: .35rem .9rem; margin: .5rem 0 .15rem 1.6rem; }
+  .drill.off .params { display: none; }
+  .params label { display: inline-flex; align-items: center; gap: .35rem; font-size: .8125rem; color: var(--muted); }
+
+  .actions { display: flex; flex-wrap: wrap; gap: .4rem; margin: 1.75rem 0 0; }
+
+  table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+  th { text-align: left; font-weight: 600; font-size: .8125rem; color: var(--muted); padding: .3rem .5rem; border-bottom: 1px solid var(--line); }
+  td { padding: .3rem .5rem; border-bottom: 1px solid var(--line-soft); }
+  th.num, td.num { text-align: right; }
+  tr.flag td { color: var(--bad); }
+  .empty { color: var(--muted); font-size: .875rem; }
+
+  /* game */
+  #bar { position: fixed; top: 0; left: 0; height: 3px; background: var(--accent); width: 100%; }
+  #game { text-align: center; padding-top: min(18vh, 7rem); }
+  #hud { display: flex; justify-content: center; gap: 2.5rem; font-size: .8125rem; color: var(--muted); }
+  #hud b { display: block; font-size: 1.375rem; font-weight: 500; color: var(--text); margin-top: .15rem; }
+  #question { font-size: clamp(2.25rem, 9vw, 3.5rem); font-weight: 500; letter-spacing: -.02em; margin: 3rem 0 2rem; }
+  #question .tol { font-size: .875rem; font-weight: 400; color: var(--muted); letter-spacing: 0; vertical-align: middle; margin-left: .6rem; }
+  #answer {
+    font: inherit; font-size: 1.75rem; font-variant-numeric: tabular-nums;
+    width: 7ch; text-align: center; padding: .1rem 0;
+    border: none; border-bottom: 2px solid var(--line); border-radius: 0;
+    background: transparent; color: var(--text); transition: border-color .1s;
+  }
+  #answer:focus { outline: none; border-bottom-color: var(--accent); }
+  #answer.ok { border-bottom-color: var(--good); }
+  .hint { margin-top: 3rem; font-size: .8125rem; color: var(--muted); }
+
+  #summary { font-size: 1.0625rem; }
+  #summary b { font-weight: 600; }
+</style>
+</head>
+<body>
+<div id="bar" hidden></div>
+<div class="wrap">
+
+<div id="settings">
+  <h1>Mathdrill</h1>
+  <p class="lede">Answers submit themselves the moment they're correct. Enter on an empty box skips the question; Enter on a wrong value clears it. Escape ends the round early.</p>
+
+  <div class="presets" id="presetButtons"></div>
+
+  <div class="round">
+    <label for="duration">Round length</label>
+    <input type="number" id="duration" value="120" min="0">
+    <span>seconds &middot; 0 for untimed</span>
+  </div>
+
+  <h2>Drills</h2>
+  <div id="drillList"></div>
+
+  <div class="actions">
+    <button id="start" class="primary">Start</button>
+    <button id="allOn">Enable all</button>
+    <button id="allOff">Disable all</button>
+    <button id="reset">Reset to defaults</button>
+  </div>
+
+  <h2>Recent rounds</h2>
+  <div id="history"></div>
+</div>
+
+<div id="game" hidden>
+  <div id="hud">
+    <div>Remaining<b id="timer">&nbsp;</b></div>
+    <div>Correct<b id="score">0</b></div>
+  </div>
+  <div id="question"></div>
+  <input id="answer" autocomplete="off" inputmode="decimal" aria-label="Answer">
+  <div class="hint">Escape to finish</div>
+</div>
+
+<div id="results" hidden>
+  <h1>Round over</h1>
+  <p id="summary"></p>
+  <div class="actions" style="margin-top:1rem">
+    <button id="again" class="primary">Play again</button>
+    <button id="back">Settings</button>
+  </div>
+  <h2>By drill</h2>
+  <div id="byDrill"></div>
+  <h2>Every question</h2>
+  <div id="log"></div>
+</div>
+
+</div>
+
+<script>
+/* ---------- helpers ---------- */
+const ri = (a, b) => { a = Math.ceil(a); b = Math.floor(b); if (b < a) [a, b] = [b, a]; return a + Math.floor(Math.random() * (b - a + 1)); };
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+const parseList = s => String(s).split(',').map(x => parseFloat(x.trim())).filter(x => !isNaN(x) && x !== 0);
+const $ = id => document.getElementById(id);
+const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; return n; };
+
+/* ---------- drill definitions ----------
+   Each drill: group, params as [key, label, default], and gen(p) returning
+   { q: question text, a: numeric answer, tol: relative tolerance,
+     tolAbs: absolute tolerance, unit: suffix }.
+   Append an object here and the settings UI builds itself. */
+const GROUPS = ['Arithmetic', 'Powers and roots', 'Percentages and fractions', 'Estimation'];
+
+const DRILLS = [
+  { id: 'add', name: 'Addition', group: 'Arithmetic',
+    params: [['a1', 'a min', 2], ['a2', 'a max', 100], ['b1', 'b min', 2], ['b2', 'b max', 100]],
+    gen: p => { const a = ri(p.a1, p.a2), b = ri(p.b1, p.b2); return { q: a + ' + ' + b, a: a + b }; } },
+
+  { id: 'sub', name: 'Subtraction', group: 'Arithmetic',
+    params: [['a1', 'a min', 2], ['a2', 'a max', 100], ['b1', 'b min', 2], ['b2', 'b max', 100]],
+    gen: p => { const a = ri(p.a1, p.a2), b = ri(p.b1, p.b2); return { q: (a + b) + ' \u2212 ' + b, a: a }; } },
+
+  { id: 'mul', name: 'Multiplication', group: 'Arithmetic',
+    params: [['a1', 'a min', 2], ['a2', 'a max', 12], ['b1', 'b min', 2], ['b2', 'b max', 100]],
+    gen: p => { const a = ri(p.a1, p.a2), b = ri(p.b1, p.b2); return { q: a + ' \u00d7 ' + b, a: a * b }; } },
+
+  { id: 'div', name: 'Division', group: 'Arithmetic',
+    params: [['a1', 'quotient min', 2], ['a2', 'quotient max', 12], ['b1', 'divisor min', 2], ['b2', 'divisor max', 100]],
+    gen: p => { const a = ri(p.a1, p.a2), b = ri(p.b1, p.b2); return { q: (a * b) + ' \u00f7 ' + b, a: a }; } },
+
+  { id: 'decmul', name: 'Decimal multiplication', group: 'Arithmetic',
+    params: [['a1', 'a min (\u00d70.1)', 2], ['a2', 'a max (\u00d70.1)', 99], ['b1', 'b min', 2], ['b2', 'b max', 20]],
+    gen: p => { const a = ri(p.a1, p.a2) / 10, b = ri(p.b1, p.b2);
+                return { q: a.toFixed(1) + ' \u00d7 ' + b, a: Math.round(a * b * 100) / 100 }; } },
+
+  { id: 'multi', name: 'Two-step', group: 'Arithmetic',
+    params: [['a1', 'a min', 2], ['a2', 'a max', 12], ['b1', 'b min', 2], ['b2', 'b max', 20], ['c1', 'c min', 2], ['c2', 'c max', 100]],
+    gen: p => { const a = ri(p.a1, p.a2), b = ri(p.b1, p.b2), c = ri(p.c1, p.c2);
+                return { q: a + ' \u00d7 ' + b + ' + ' + c, a: a * b + c }; } },
+
+  { id: 'sum', name: 'Sum 1\u2026n', group: 'Arithmetic',
+    params: [['n1', 'n min', 5], ['n2', 'n max', 60]],
+    gen: p => { const n = ri(p.n1, p.n2); return { q: '1 + 2 + \u2026 + ' + n, a: n * (n + 1) / 2 }; } },
+
+  { id: 'mod', name: 'Modular', group: 'Arithmetic',
+    params: [['a1', 'a min', 20], ['a2', 'a max', 500], ['m1', 'm min', 3], ['m2', 'm max', 20]],
+    gen: p => { const a = ri(p.a1, p.a2), m = ri(p.m1, p.m2); return { q: a + ' mod ' + m, a: a % m }; } },
+
+  { id: 'sq', name: 'Squares', group: 'Powers and roots',
+    params: [['n1', 'n min', 2], ['n2', 'n max', 30]],
+    gen: p => { const n = ri(p.n1, p.n2); return { q: n + '\u00b2', a: n * n }; } },
+
+  { id: 'sqrt', name: 'Square roots, exact', group: 'Powers and roots',
+    params: [['n1', 'n min', 2], ['n2', 'n max', 30]],
+    gen: p => { const n = ri(p.n1, p.n2); return { q: '\u221a' + (n * n), a: n }; } },
+
+  { id: 'cube', name: 'Cubes', group: 'Powers and roots',
+    params: [['n1', 'n min', 2], ['n2', 'n max', 15]],
+    gen: p => { const n = ri(p.n1, p.n2); return { q: n + '\u00b3', a: n * n * n }; } },
+
+  { id: 'cbrt', name: 'Cube roots, exact', group: 'Powers and roots',
+    params: [['n1', 'n min', 2], ['n2', 'n max', 15]],
+    gen: p => { const n = ri(p.n1, p.n2); return { q: '\u221b' + (n * n * n), a: n }; } },
+
+  { id: 'pow', name: 'Powers', group: 'Powers and roots',
+    params: [['b', 'base', 2], ['e1', 'exp min', 2], ['e2', 'exp max', 12]],
+    gen: p => { const e = ri(p.e1, p.e2); return { q: p.b + '^' + e, a: Math.pow(p.b, e) }; } },
+
+  { id: 'log', name: 'Logs, exact', group: 'Powers and roots',
+    params: [['b', 'base', 2], ['e1', 'exp min', 2], ['e2', 'exp max', 12]],
+    gen: p => { const e = ri(p.e1, p.e2); return { q: 'log_' + p.b + '(' + Math.pow(p.b, e) + ')', a: e }; } },
+
+  { id: 'pct', name: 'Percent of', group: 'Percentages and fractions',
+    params: [['n1', 'n min (\u00d720)', 1], ['n2', 'n max (\u00d720)', 50]],
+    gen: p => { const pc = pick([5, 10, 15, 20, 25, 30, 40, 50, 60, 75, 80, 90]); const n = ri(p.n1, p.n2) * 20;
+                return { q: pc + '% of ' + n, a: pc * n / 100 }; } },
+
+  { id: 'pctchg', name: 'Percentage change', group: 'Percentages and fractions',
+    params: [['a1', 'from min', 20], ['a2', 'from max', 200]],
+    gen: p => { const a = ri(p.a1, p.a2);
+                let b = a + ri(-Math.floor(a * 0.6), Math.floor(a * 0.6));
+                if (b === a) b = a + 1; if (b < 1) b = 1;
+                return { q: a + ' \u2192 ' + b, a: (b - a) / a * 100, tolAbs: 0.5, unit: '%' }; } },
+
+  { id: 'frac', name: 'Fraction to decimal', group: 'Percentages and fractions',
+    params: [['dens', 'denominators', '3,6,7,8,9,11,12,13,16,17,19']],
+    gen: p => { const ds = parseList(p.dens); const d = pick(ds.length ? ds : [7]); const n = ri(1, Math.max(1, d - 1));
+                return { q: n + '/' + d, a: n / d, tol: 0.01 }; } },
+
+  { id: 'recip', name: 'Reciprocals', group: 'Percentages and fractions',
+    params: [['n1', 'n min', 2], ['n2', 'n max', 50]],
+    gen: p => { const n = ri(p.n1, p.n2); return { q: '1 / ' + n, a: 1 / n, tol: 0.01 }; } },
+
+  { id: 'sqrta', name: 'Square roots, approximate', group: 'Estimation',
+    params: [['n1', 'n min', 2], ['n2', 'n max', 200]],
+    gen: p => { let n = 0;
+                for (let i = 0; i < 40; i++) { n = ri(p.n1, p.n2); if (!Number.isInteger(Math.sqrt(n))) break; }
+                return { q: '\u221a' + n, a: Math.sqrt(n), tol: 0.01 }; } },
+
+  { id: 'ln', name: 'Natural logs', group: 'Estimation',
+    params: [['n1', 'n min', 2], ['n2', 'n max', 100]],
+    gen: p => { const n = ri(p.n1, p.n2); return { q: 'ln ' + n, a: Math.log(n), tol: 0.02 }; } },
+
+  { id: 'exp', name: 'Exponentials', group: 'Estimation',
+    params: [['x1', 'x min (\u00d70.1)', 1], ['x2', 'x max (\u00d70.1)', 30]],
+    gen: p => { const x = ri(p.x1, p.x2) / 10; return { q: 'e^' + x.toFixed(1), a: Math.exp(x), tol: 0.02 }; } },
+
+  { id: 'comp', name: 'Compounding', group: 'Estimation',
+    params: [['r1', 'rate % min', 1], ['r2', 'rate % max', 15], ['n1', 'periods min', 2], ['n2', 'periods max', 20]],
+    gen: p => { const r = ri(p.r1, p.r2), n = ri(p.n1, p.n2);
+                return { q: '(1 + ' + r + '%)^' + n + ' \u2212 1', a: (Math.pow(1 + r / 100, n) - 1) * 100, tol: 0.02, unit: '%' }; } }
+];
+
+const BY_ID = Object.fromEntries(DRILLS.map(d => [d.id, d]));
+
+/* ---------- presets ---------- */
+const PRESETS = {
+  'Zetamac default': { duration: 120, on: ['add', 'sub', 'mul', 'div'] },
+  'Squares to 100': { duration: 120, on: ['sq'], p: { sq: { n1: 1, n2: 100 } } },
+  'Powers and roots': { duration: 120, on: ['sq', 'sqrt', 'cube', 'cbrt', 'pow', 'log'] },
+  'Estimation': { duration: 120, on: ['recip', 'frac', 'sqrta', 'ln', 'exp', 'comp', 'pctchg'] },
+  'Everything': { duration: 180, on: DRILLS.map(d => d.id) }
+};
+
+/* ---------- config ---------- */
+function defaultConfig() {
+  const c = { duration: 120, drills: {} };
+  DRILLS.forEach(d => {
+    const p = {};
+    d.params.forEach(([k, , def]) => p[k] = def);
+    c.drills[d.id] = { on: ['add', 'sub', 'mul', 'div'].includes(d.id), w: 1, p };
+  });
+  return c;
+}
+
+let cfg = defaultConfig();
+
+function loadCfg() {
+  try {
+    const raw = localStorage.getItem('mathdrill-cfg');
+    if (!raw) return;
+    const saved = JSON.parse(raw);
+    if (typeof saved.duration === 'number') cfg.duration = saved.duration;
+    for (const id in cfg.drills) {
+      if (!saved.drills || !saved.drills[id]) continue;
+      const s = saved.drills[id];
+      cfg.drills[id].on = !!s.on;
+      cfg.drills[id].w = s.w || 1;
+      for (const k in cfg.drills[id].p) if (s.p && s.p[k] !== undefined) cfg.drills[id].p[k] = s.p[k];
+    }
+  } catch (e) { /* ignore */ }
+}
+function saveCfg() { try { localStorage.setItem('mathdrill-cfg', JSON.stringify(cfg)); } catch (e) {} }
+function loadHistory() { try { return JSON.parse(localStorage.getItem('mathdrill-history') || '[]'); } catch (e) { return []; } }
+function saveHistory(h) { try { localStorage.setItem('mathdrill-history', JSON.stringify(h.slice(0, 20))); } catch (e) {} }
+
+/* ---------- settings UI ---------- */
+function renderSettings() {
+  $('duration').value = cfg.duration;
+  const list = $('drillList');
+  list.innerHTML = '';
+
+  GROUPS.forEach(g => {
+    const drills = DRILLS.filter(d => d.group === g);
+    if (!drills.length) return;
+    const box = el('div', 'group');
+    box.appendChild(el('h2', null, g));
+
+    drills.forEach(d => {
+      const c = cfg.drills[d.id];
+      const row = el('div', 'drill' + (c.on ? '' : ' off'));
+
+      const head = el('label', 'head');
+      const cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.checked = c.on;
+      cb.onchange = () => { c.on = cb.checked; row.className = 'drill' + (c.on ? '' : ' off'); saveCfg(); };
+      head.appendChild(cb);
+      head.appendChild(el('span', 'name', d.name));
+      row.appendChild(head);
+
+      const params = el('div', 'params');
+      const wl = el('label', null, 'weight ');
+      const wi = document.createElement('input');
+      wi.type = 'number'; wi.min = '0'; wi.step = '1'; wi.value = c.w; wi.style.width = '3.5rem';
+      wi.onchange = () => { c.w = Math.max(0, parseFloat(wi.value) || 0); saveCfg(); };
+      wl.appendChild(wi);
+      params.appendChild(wl);
+
+      d.params.forEach(([k, label, def]) => {
+        const l = el('label', null, label + ' ');
+        const i = document.createElement('input');
+        i.type = (typeof def === 'string') ? 'text' : 'number';
+        i.value = c.p[k];
+        i.onchange = () => { c.p[k] = (typeof def === 'string') ? i.value : (parseFloat(i.value) || 0); saveCfg(); };
+        l.appendChild(i);
+        params.appendChild(l);
+      });
+
+      row.appendChild(params);
+      box.appendChild(row);
+    });
+
+    list.appendChild(box);
+  });
+
+  renderHistory();
+}
+
+function renderHistory() {
+  const h = loadHistory();
+  if (!h.length) { $('history').innerHTML = '<p class="empty">Your last twenty rounds will show up here.</p>'; return; }
+  let html = '<table><tr><th>When</th><th>Drills</th><th class="num">Length</th><th class="num">Correct</th><th class="num">Per minute</th></tr>';
+  h.slice(0, 10).forEach(r => {
+    html += '<tr><td>' + new Date(r.t).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) +
+      '</td><td>' + r.drills + '</td><td class="num">' + r.dur + 's</td><td class="num">' + r.score +
+      '</td><td class="num">' + r.rate + '</td></tr>';
+  });
+  $('history').innerHTML = html + '</table>';
+}
+
+Object.keys(PRESETS).forEach(name => {
+  const b = el('button', null, name);
+  b.onclick = () => {
+    const pr = PRESETS[name];
+    cfg.duration = pr.duration;
+    DRILLS.forEach(d => { cfg.drills[d.id].on = pr.on.includes(d.id); });
+    if (pr.p) for (const id in pr.p) Object.assign(cfg.drills[id].p, pr.p[id]);
+    saveCfg(); renderSettings();
+  };
+  $('presetButtons').appendChild(b);
+});
+
+$('duration').onchange = () => { cfg.duration = Math.max(0, parseInt($('duration').value) || 0); saveCfg(); };
+$('allOn').onclick = () => { DRILLS.forEach(d => cfg.drills[d.id].on = true); saveCfg(); renderSettings(); };
+$('allOff').onclick = () => { DRILLS.forEach(d => cfg.drills[d.id].on = false); saveCfg(); renderSettings(); };
+$('reset').onclick = () => { cfg = defaultConfig(); saveCfg(); renderSettings(); };
+
+/* ---------- game ---------- */
+let game = null, tick = null, flash = null;
+
+function activeDrills() {
+  return DRILLS.filter(d => cfg.drills[d.id].on && cfg.drills[d.id].w > 0);
+}
+
+function nextQuestion() {
+  const pool = activeDrills();
+  const total = pool.reduce((s, d) => s + cfg.drills[d.id].w, 0);
+  let r = Math.random() * total, chosen = pool[0];
+  for (const d of pool) { r -= cfg.drills[d.id].w; if (r <= 0) { chosen = d; break; } }
+  let q;
+  for (let i = 0; i < 20; i++) {
+    q = chosen.gen(cfg.drills[chosen.id].p);
+    if (!game.cur || q.q !== game.cur.q) break;
+  }
+  q.drill = chosen.id;
+  q.shown = performance.now();
+  q.misses = 0;
+  game.cur = q;
+
+  $('question').textContent = q.q;
+  let tol = '';
+  if (q.tol) tol = '\u00b1' + (q.tol * 100) + '%';
+  else if (q.tolAbs) tol = '\u00b1' + q.tolAbs + (q.unit || '');
+  if (tol) $('question').appendChild(el('span', 'tol', tol));
+  $('answer').value = '';
+}
+
+function isCorrect(val, q) {
+  if (!isFinite(val)) return false;
+  if (q.tol) return Math.abs(val - q.a) <= Math.abs(q.a) * q.tol + 1e-12;
+  if (q.tolAbs) return Math.abs(val - q.a) <= q.tolAbs + 1e-12;
+  return Math.abs(val - q.a) < 1e-9;
+}
+
+function startGame() {
+  if (!activeDrills().length) { alert('Enable at least one drill first.'); return; }
+  game = { score: 0, log: [], cur: null, start: performance.now(),
+           end: cfg.duration > 0 ? performance.now() + cfg.duration * 1000 : Infinity };
+  $('settings').hidden = true; $('results').hidden = true; $('game').hidden = false;
+  $('bar').hidden = false;
+  $('score').textContent = '0';
+  nextQuestion();
+  $('answer').focus();
+  clearInterval(tick);
+  tick = setInterval(() => {
+    const left = (game.end - performance.now()) / 1000;
+    if (cfg.duration > 0) {
+      $('timer').textContent = Math.max(0, left).toFixed(1) + 's';
+      $('bar').style.width = Math.max(0, Math.min(1, left / cfg.duration)) * 100 + '%';
+    } else {
+      $('timer').textContent = ((performance.now() - game.start) / 1000).toFixed(1) + 's';
+      $('bar').style.width = '100%';
+    }
+    if (left <= 0) endGame();
+  }, 100);
+}
+
+function record(skipped) {
+  const q = game.cur;
+  game.log.push({ drill: q.drill, q: q.q, a: q.a, unit: q.unit || '',
+                  time: (performance.now() - q.shown) / 1000, misses: q.misses, skipped: !!skipped });
+}
+
+$('answer').addEventListener('input', () => {
+  if (!game || !game.cur) return;
+  const raw = $('answer').value.replace(/[,\s]/g, '');
+  if (raw === '' || raw === '-' || raw === '.' || raw === '-.') return;
+  if (isCorrect(parseFloat(raw), game.cur)) {
+    record(false);
+    game.score++;
+    $('score').textContent = game.score;
+    $('answer').classList.add('ok');
+    clearTimeout(flash);
+    flash = setTimeout(() => $('answer').classList.remove('ok'), 160);
+    nextQuestion();
+  }
+});
+
+$('answer').addEventListener('keydown', e => {
+  if (e.key === 'Escape') { endGame(); return; }
+  if (e.key !== 'Enter') return;
+  if ($('answer').value.trim() === '') { record(true); nextQuestion(); }
+  else { game.cur.misses++; $('answer').value = ''; }
+});
+
+function fmt(x, unit) {
+  if (x === undefined) return '';
+  const r = Math.abs(x) >= 1000 || Number.isInteger(x) ? x.toString() : parseFloat(x.toPrecision(6)).toString();
+  return r + (unit || '');
+}
+
+function endGame() {
+  clearInterval(tick);
+  $('game').hidden = true; $('bar').hidden = true; $('results').hidden = false;
+  const elapsed = (performance.now() - game.start) / 1000;
+  const rate = elapsed > 0 ? (game.score / elapsed * 60).toFixed(1) : '0';
+  $('summary').innerHTML = '<b>' + game.score + ' correct</b> in ' + elapsed.toFixed(0) + ' seconds, ' +
+    rate + ' per minute' + (game.score ? ', averaging ' + (elapsed / game.score).toFixed(2) + 's each' : '') + '.';
+
+  const stats = {};
+  game.log.forEach(e => {
+    if (!stats[e.drill]) stats[e.drill] = { n: 0, t: 0, skipped: 0, misses: 0 };
+    const s = stats[e.drill];
+    s.n++; s.t += e.time; s.skipped += e.skipped ? 1 : 0; s.misses += e.misses;
+  });
+  let html = '<table><tr><th>Drill</th><th class="num">Answered</th><th class="num">Average</th><th class="num">Skipped</th><th class="num">Wrong entries</th></tr>';
+  Object.keys(stats).sort((a, b) => (stats[b].t / stats[b].n) - (stats[a].t / stats[a].n)).forEach(id => {
+    const s = stats[id];
+    html += '<tr><td>' + BY_ID[id].name + '</td><td class="num">' + (s.n - s.skipped) + '</td><td class="num">' +
+      (s.t / s.n).toFixed(2) + 's</td><td class="num">' + s.skipped + '</td><td class="num">' + s.misses + '</td></tr>';
+  });
+  $('byDrill').innerHTML = html + '</table>';
+
+  let log = '<table><tr><th class="num">#</th><th>Question</th><th>Answer</th><th class="num">Time</th><th>Notes</th></tr>';
+  game.log.forEach((e, i) => {
+    const notes = (e.skipped ? 'skipped' : '') + (e.misses ? (e.skipped ? ', ' : '') + e.misses + ' wrong' : '');
+    log += '<tr' + (e.skipped || e.misses ? ' class="flag"' : '') + '><td class="num">' + (i + 1) + '</td><td>' + e.q +
+      '</td><td>' + fmt(e.a, e.unit) + '</td><td class="num">' + e.time.toFixed(2) + 's</td><td>' + notes + '</td></tr>';
+  });
+  $('log').innerHTML = log + '</table>';
+
+  const h = loadHistory();
+  h.unshift({ t: Date.now(), score: game.score, dur: Math.round(elapsed), rate: rate,
+              drills: activeDrills().map(d => d.name).join(', ').slice(0, 48) });
+  saveHistory(h);
+}
+
+$('start').onclick = startGame;
+$('again').onclick = startGame;
+$('back').onclick = () => { $('results').hidden = true; $('settings').hidden = false; renderSettings(); };
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !$('settings').hidden && document.activeElement.tagName !== 'INPUT') startGame();
+});
+
+loadCfg();
+renderSettings();
+</script>
+</body>
+</html>
