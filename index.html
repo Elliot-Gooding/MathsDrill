@@ -441,10 +441,10 @@ function startGame() {
   tick = setInterval(() => {
     const left = (game.end - performance.now()) / 1000;
     if (cfg.duration > 0) {
-      $('timer').textContent = Math.max(0, left).toFixed(1) + 's';
+      $('timer').textContent = Math.max(0, Math.ceil(left)) + 's';
       $('bar').style.width = Math.max(0, Math.min(1, left / cfg.duration)) * 100 + '%';
     } else {
-      $('timer').textContent = ((performance.now() - game.start) / 1000).toFixed(1) + 's';
+      $('timer').textContent = Math.floor((performance.now() - game.start) / 1000) + 's';
       $('bar').style.width = '100%';
     }
     if (left <= 0) endGame();
@@ -473,8 +473,8 @@ $('answer').addEventListener('input', () => {
 });
 
 $('answer').addEventListener('keydown', e => {
-  if (e.key === 'Escape') { endGame(); return; }
   if (e.key !== 'Enter') return;
+  if (!game || !game.cur) return;
   if ($('answer').value.trim() === '') { record(true); nextQuestion(); }
   else { game.cur.misses++; $('answer').value = ''; }
 });
@@ -486,7 +486,10 @@ function fmt(x, unit) {
 }
 
 function endGame() {
+  if (!game || game.over) return;
+  game.over = true;
   clearInterval(tick);
+  tick = null;
   $('game').hidden = true; $('bar').hidden = true; $('results').hidden = false;
   const elapsed = (performance.now() - game.start) / 1000;
   const rate = elapsed > 0 ? (game.score / elapsed * 60).toFixed(1) : '0';
@@ -526,6 +529,11 @@ $('again').onclick = startGame;
 $('back').onclick = () => { $('results').hidden = true; $('settings').hidden = false; renderSettings(); };
 
 document.addEventListener('keydown', e => {
+  if ((e.key === 'Escape' || e.key === 'Esc') && !$('game').hidden) {
+    e.preventDefault();
+    endGame();
+    return;
+  }
   if (e.key === 'Enter' && !$('settings').hidden && document.activeElement.tagName !== 'INPUT') startGame();
 });
 
